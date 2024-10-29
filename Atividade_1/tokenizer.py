@@ -139,7 +139,7 @@ class BPETokenizer:
                 256 tokens padrões para UTF-8.
             verbose (boolean): Se verdadeiro mostra o resultado dos tokens salvos em arquivo.
         """
-        file = file_prefix + ".txt"
+        file = file_prefix + "_" + self.num_merges + "tokens.txt"
 
         # Transforma a tupla de valores de merge para um dicionário.
         inverted_merges = {idx: pair for pair, idx in self.merges.items()}
@@ -167,11 +167,3 @@ class BPETokenizer:
                     if verbose:
                         print(output)
                     f.write(output + "\n")
-
-
-text = "The conda environments are prepended to your PATH variable, so when you are trying to run the executable 'ipython', Linux will not find 'ipython' in your activated environment (since it doesn't exist there), but it will continue searching for it, and eventually find it wherever you have it installed."
-bpe = BPETokenizer(20)
-
-bpe.train(text)
-
-bpe.save("vocabula")
