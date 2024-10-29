@@ -139,7 +139,7 @@ class BPETokenizer:
                 256 tokens padrões para UTF-8.
             verbose (boolean): Se verdadeiro mostra o resultado dos tokens salvos em arquivo.
         """
-        file = file_prefix + "_" + self.num_merges + "tokens.txt"
+        file = file_prefix + "_" + str(self.num_merges) + "tokens.txt"
 
         # Transforma a tupla de valores de merge para um dicionário.
         inverted_merges = {idx: pair for pair, idx in self.merges.items()}
