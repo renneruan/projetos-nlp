@@ -1,22 +1,24 @@
 import nltk
 import torch
 import re
+from tqdm import tqdm
 
 
 class Bigram:
-    def __init__(self):
+    def __init__(self, smoothed=False):
+        self.smoothed = smoothed
         self.b = {}
         self.stoi = {}
 
     def build_tokens_matrix(self, train_data):
         fdist1 = nltk.FreqDist(train_data)
         self.word_unique_count = fdist1.B()
-        print(self.word_unique_count)
+        print(f"Tokens únicos analisados: {self.word_unique_count}")
 
         self.end_position = list(fdist1.keys()).index("<end>")
 
         self.N = torch.zeros(
-            (self.word_unique_count, self.word_unique_count), dtype=torch.int32
+            (self.word_unique_count, self.word_unique_count), dtype=torch.int16
         )
 
         self.stoi = {s: i for i, s in enumerate(fdist1.keys())}
@@ -25,14 +27,20 @@ class Bigram:
     def train(self, train_data):
         self.build_tokens_matrix(train_data)
 
-        for sent1, sent2 in zip(train_data, train_data[1:]):
+        print("Realizando treinamento de modelo bigrama")
+        for sent1, sent2 in tqdm(zip(train_data, train_data[1:])):
             ix1 = self.stoi[sent1]
             ix2 = self.stoi[sent2]
 
             self.N[ix1, ix2] += 1
 
         self.P = self.N.float()
-        self.P = self.P / self.P.sum(1, keepdim=True)
+
+        smooth_constant = 0
+        if self.smoothed:
+            smooth_constant = 1
+
+        self.P = (self.P + smooth_constant) / self.P.sum(1, keepdim=True)
 
     def generator(self, n_samples):
         g = torch.Generator().manual_seed(42)
@@ -86,7 +94,6 @@ class Bigram:
 
         perplexity = prob_total ** (-1 / N)
 
-        print(perplexity)
         return perplexity
 
     def save_bigram_probabilities(self):
