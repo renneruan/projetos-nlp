@@ -10,10 +10,16 @@ from tqdm import tqdm
 
 
 class CorpusLoader:
-    def __init__(self):
+    def __init__(self, type):
+        self.type = type
         self.files_processed = []
         self.total_token_count = 0
         self.data = []
+
+        if self.type == "word":
+            print("Divisão de tokens por palavras")
+        else:
+            print("Divisão de tokens por sentenças")
 
     def read_files_chunk(self, files_path):
         files = []
@@ -25,9 +31,14 @@ class CorpusLoader:
                 file_data = json.load(file)
 
                 if file_data["text"]:
-                    file_data["text_tokens"] = nltk.tokenize.word_tokenize(
-                        file_data["text"], language="portuguese"
-                    )
+                    if self.type == "word":
+                        file_data["text_tokens"] = nltk.tokenize.word_tokenize(
+                            file_data["text"], language="portuguese"
+                        )
+                    else:
+                        file_data["text_tokens"] = nltk.tokenize.sent_tokenize(
+                            file_data["text"], language="portuguese"
+                        )
 
                     file_data["text_tokens"].insert(0, "<start>")
                     file_data["text_tokens"].append("<end>")
@@ -42,12 +53,15 @@ class CorpusLoader:
 
         return files, token_count
 
-    def read_all_files(self, corpus_directory):
+    def read_all_files(self, corpus_directory, files_quantity):
         files_names = [
             os.path.join(corpus_directory, file)
             for file in os.listdir(corpus_directory)
             if file.endswith(".json")
         ]
+
+        if files_quantity != None:
+            files_names = files_names[:files_quantity]
 
         print(f"Lendo {len(files_names)} arquivos.")
         files, token_count = self.read_files_chunk(files_names)
