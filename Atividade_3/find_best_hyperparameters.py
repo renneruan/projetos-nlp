@@ -1,11 +1,10 @@
-import pandas as pd
-import numpy as np
-
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+
+from sklearn.linear_model import SGDClassifier
 
 
 class HyperparameterOptimizer:
@@ -84,12 +83,7 @@ class HyperparameterOptimizer:
 
         grid.fit(self.X_train, self.y_train)
 
-        result = {
-            "best_score": grid.best_score_,
-            "best_params": grid.best_params_,
-        }
-
-        return result
+        return grid
 
     def get_results(self):
         return self.results
