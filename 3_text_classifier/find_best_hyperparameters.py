@@ -1,0 +1,132 @@
+import re
+import pandas as pd
+import nltk
+
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.pipeline import Pipeline
+
+from nltk.stem import WordNetLemmatizer
+
+nltk.download("wordnet")
+
+
+class HyperparameterOptimizer:
+
+    def __init__(self, input_data, label_data) -> None:
+        self.input_data = input_data
+        self.label_data = label_data
+
+        self.vectorizer_parameters = {
+            "vect__max_df": (0.6, 0.8),
+            "vect__min_df": (1, 3, 5),
+            # "vect__ngram_range": ((1, 2), (2, 3)),
+            "vect__norm": ("l1", "l2"),
+        }
+
+        self.results = {"multi_nb": None, "logistic_regression": None, "sgdc": None}
+
+        self.__preprocess_text_input()
+        self.__split_data()
+
+        self.__find_multi_nb_parameters()
+        self.__find_logistic_regression_parameters()
+        self.__find_sgdc_parameters()
+
+    def __preprocess_text_input(self):
+        lemmatizer = WordNetLemmatizer()
+
+        def clean_text(text):
+            text = re.sub(r"[^a-zA-Z0-9\s]", "", text)
+            text = text.lower()
+            lemmed_text = lemmatizer.lemmatize(text)
+
+            return lemmed_text
+
+        self.input_data = self.input_data.apply(clean_text)
+
+    def __split_data(self):
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.input_data, self.label_data, test_size=0.2, random_state=42
+        )
+
+        print(f"Tamanho de treino: {X_train.shape}")
+        print(f"Tamanho de teste: {X_test.shape}")
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test
+
+    def __apply_grid_search(self, model_parameters, classifier):
+
+        params = model_parameters | self.vectorizer_parameters
+
+        pipeline = Pipeline(
+            [
+                ("vect", TfidfVectorizer(stop_words="english")),
+                ("clf", classifier),
+            ]
+        )
+
+        print(f"\nLista de parâmetros utilizada: {params}\n")
+        grid = GridSearchCV(pipeline, param_grid=params, n_jobs=-1, cv=2, verbose=2)
+
+        grid.fit(self.X_train, self.y_train)
+
+        return grid
+
+    def __find_multi_nb_parameters(self):
+        print("Encontrando melhores parâmetros para Naive Bayes Multinomial")
+
+        multi_nb_parameters = {
+            "clf__alpha": [0.0001, 0.001, 0.1, 1, 10, 100, 1000],
+        }
+
+        self.results["multi_nb"] = self.__apply_grid_search(
+            multi_nb_parameters, MultinomialNB()
+        )
+
+        print("Finalizada busca por melhores parâmetros para Naive Bayes Multinomial")
+
+    def __find_logistic_regression_parameters(self):
+        print("Encontrando melhores parâmetros para Regressão Logística")
+
+        logistic_regression_parameters = {
+            "clf__C": [0.001, 0.1, 1, 10, 100],
+            "clf__solver": ["lbfgs", "liblinear", "newton-cg"],
+            # "clf__max_iter": [100, 200, 300],
+            # "clf__penalty": ["l1", "l2"],
+        }
+
+        self.results["logistic_regression"] = self.__apply_grid_search(
+            logistic_regression_parameters, LogisticRegression()
+        )
+
+        print("Finalizada busca por melhores parâmetros para Regressão Logística")
+
+    def __find_sgdc_parameters(self):
+        print("Encontrando melhores parâmetros para SGDC")
+
+        sgdc_parameters = {
+            # "clf__loss": ["hinge", "log_loss", "modified_huber"],
+            # "clf__penalty": ["l2", "l1", "elasticnet"],
+            "clf__alpha": [0.0001, 0.001, 0.01, 0.1],
+        }
+        self.results["sgdc"] = self.__apply_grid_search(
+            sgdc_parameters, SGDClassifier(random_state=1)
+        )
+
+        print("Finalizada busca por melhores parâmetros para SGDC")
+
+    def export_grid_results(self, path):
+        for algorithm_results in self.results:
+            grid_df = pd.DataFrame(self.results[algorithm_results].cv_results_)
+            grid_df.to_csv(f"{path}/{algorithm_results}_results.csv")
+
+    def get_results(self):
+        return self.results
+
+    def get_splitted_data(self):
+        return self.X_train, self.X_test, self.y_train, self.y_test
